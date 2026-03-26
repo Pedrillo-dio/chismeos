@@ -5,14 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Chismes Contigo • Comunidad en vivo</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-    <!-- Firebase SDK (modular) -->
+    <!-- Firebase SDKs -->
     <script type="module">
-        // Importa Firebase y Firestore
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, query, orderBy, onSnapshot, addDoc, updateDoc, doc, deleteDoc, arrayUnion, increment, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, query, orderBy, onSnapshot, addDoc, updateDoc, doc, deleteDoc, getDoc, setDoc, serverTimestamp, increment, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        // 🔥 TUS CREDENCIALES DE FIREBASE
+        // 🔥 CONFIGURACIÓN DE FIREBASE (TUS DATOS)
         const firebaseConfig = {
             apiKey: "AIzaSyAXSRrv0l7fenE0FmA5GWZ9AsxflmxrrQM",
             authDomain: "chismes-contigo.firebaseapp.com",
@@ -23,12 +22,10 @@
             measurementId: "G-X4TB6DNM0Q"
         };
 
-        // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // Exportar funciones y variables globalmente para usarlas desde el HTML
         window.db = db;
         window.auth = auth;
         window.collection = collection;
@@ -36,17 +33,19 @@
         window.addDoc = addDoc;
         window.updateDoc = updateDoc;
         window.deleteDoc = deleteDoc;
-        window.arrayUnion = arrayUnion;
-        window.increment = increment;
         window.getDoc = getDoc;
         window.setDoc = setDoc;
         window.serverTimestamp = serverTimestamp;
+        window.increment = increment;
+        window.arrayUnion = arrayUnion;
         window.query = query;
         window.orderBy = orderBy;
         window.onSnapshot = onSnapshot;
-        window.getAuth = () => auth;
-        window.signInAnonymously = signInAnonymously;
+        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.signOut = signOut;
         window.onAuthStateChanged = onAuthStateChanged;
+        window.updateProfile = updateProfile;
     </script>
 
     <style>
@@ -73,7 +72,6 @@
             min-height: 100vh;
             transition: background 0.3s;
         }
-        /* HEADER */
         .header {
             background: linear-gradient(135deg, #0b3b5f, #1976d2);
             color: white;
@@ -125,8 +123,6 @@
             transition: 0.2s;
         }
         .theme-toggle:hover { background: rgba(255,255,255,0.4); }
-
-        /* LAYOUT */
         .main-layout {
             max-width: 1400px;
             margin: 30px auto;
@@ -220,7 +216,6 @@
             background: #ffdcb8;
             transform: scale(1.05);
         }
-        /* MODALES */
         .modal {
             display: none;
             position: fixed;
@@ -379,16 +374,15 @@
         <h3 style="margin-top:30px;"><i class="fas fa-fire"></i> Tendencia</h3>
         <div id="trendingSidebar"></div>
         <div class="sidebar-buttons">
-            <button class="sidebar-btn" onclick="exportData()"><i class="fas fa-download"></i> Exportar datos (backup)</button>
-            <button class="sidebar-btn" onclick="importData()"><i class="fas fa-upload"></i> Importar datos (restaurar)</button>
+            <button class="sidebar-btn" onclick="exportData()"><i class="fas fa-download"></i> Exportar datos</button>
+            <button class="sidebar-btn" onclick="importData()"><i class="fas fa-upload"></i> Importar datos</button>
         </div>
     </aside>
 
     <section class="main-content">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap:wrap; gap:15px;">
             <h2 id="currentCategoryTitle">🌎 Feed Global</h2>
-            <input type="text" id="searchInput" placeholder="🔍 Buscar chismes..." oninput="renderPosts()"
-                style="padding:10px 18px; border-radius:50px; border:1px solid #ccc; width:250px;">
+            <input type="text" id="searchInput" placeholder="🔍 Buscar chismes..." oninput="renderPosts()" style="padding:10px 18px; border-radius:50px; border:1px solid #ccc; width:250px;">
             <select id="sortSelect" onchange="renderPosts()" style="padding:10px 18px; border-radius:50px; border:1px solid #ccc; background:var(--card); color:var(--text);">
                 <option value="new">Más recientes</option>
                 <option value="hot">Más votados</option>
@@ -413,14 +407,16 @@
     <i class="fas fa-plus"></i>
 </button>
 
-<!-- MODALES (igual que antes) -->
+<!-- MODALES -->
 <div class="modal close-on-click" id="editProfileModal">
     <div class="modal-content" style="padding:30px; max-width: 400px;">
         <h2 style="margin-bottom:20px; text-align:center;">✏️ Editar Perfil</h2>
         <div style="text-align:center; margin-bottom:20px;">
             <img id="editProfileAvatarPreview" src="" class="avatar" style="width:100px; height:100px; border:4px solid var(--primary); margin:0 auto;">
         </div>
-        <label style="font-weight:bold; display:block; margin-bottom:5px;">URL de tu nueva foto:</label>
+        <label style="font-weight:bold; display:block; margin-bottom:5px;">Nombre de usuario:</label>
+        <input type="text" id="editUsername" placeholder="Nuevo nombre" style="width:100%; padding:14px; border-radius:16px; border:2px solid #ddd; margin-bottom:15px;">
+        <label style="font-weight:bold; display:block; margin-bottom:5px;">URL de nueva foto:</label>
         <input type="text" id="newAvatarUrl" placeholder="Pega el link de una imagen aquí..." style="width:100%; padding:14px; border-radius:16px; border:2px solid #ddd; margin-bottom:20px;">
         <div style="display:flex; gap:10px;">
             <button onclick="closeModal('editProfileModal')" style="flex:1; padding:12px; border-radius:50px; border:none; cursor:pointer; font-weight:bold;">Cancelar</button>
@@ -475,16 +471,17 @@
 <div class="modal close-on-click" id="authModal">
     <div class="modal-content" style="max-width:460px; padding:30px;">
         <div class="auth-tabs">
-            <div class="auth-tab active" onclick="switchAuthTab(0)" id="tabLogin">Iniciar sesión</div>
-            <div class="auth-tab" onclick="switchAuthTab(1)" id="tabRegister">Crear cuenta</div>
+            <div class="auth-tab active" onclick="switchAuthTab(0)">Iniciar sesión</div>
+            <div class="auth-tab" onclick="switchAuthTab(1)">Crear cuenta</div>
         </div>
         <div id="loginForm">
-            <input type="text" id="loginUsername" placeholder="Usuario" style="width:100%; margin-top:25px; padding:14px; border-radius:16px; border:2px solid #ddd;">
+            <input type="email" id="loginEmail" placeholder="Correo electrónico" style="width:100%; margin-top:25px; padding:14px; border-radius:16px; border:2px solid #ddd;">
             <input type="password" id="loginPassword" placeholder="Contraseña" style="width:100%; margin-top:12px; padding:14px; border-radius:16px; border:2px solid #ddd;">
             <button onclick="login()" style="width:100%; margin-top:25px; padding:15px; background:#1976d2; color:white; border:none; border-radius:50px; font-weight:700; cursor:pointer;">Entrar</button>
         </div>
         <div id="registerForm" style="display:none;">
-            <input type="text" id="regUsername" placeholder="Elige un usuario" style="width:100%; margin-top:25px; padding:14px; border-radius:16px; border:2px solid #ddd;">
+            <input type="text" id="regUsername" placeholder="Nombre de usuario" style="width:100%; margin-top:25px; padding:14px; border-radius:16px; border:2px solid #ddd;">
+            <input type="email" id="regEmail" placeholder="Correo electrónico" style="width:100%; margin-top:12px; padding:14px; border-radius:16px; border:2px solid #ddd;">
             <input type="password" id="regPassword" placeholder="Contraseña" style="width:100%; margin-top:12px; padding:14px; border-radius:16px; border:2px solid #ddd;">
             <button onclick="register()" style="width:100%; margin-top:25px; padding:15px; background:#1976d2; color:white; border:none; border-radius:50px; font-weight:700; cursor:pointer;">Crear cuenta</button>
         </div>
@@ -508,8 +505,8 @@
 <div class="modal close-on-click" id="editPostModal">
     <div class="modal-content" style="padding:30px; max-width:620px;">
         <h2 style="margin-bottom:20px;">✏️ Editar tu chisme</h2>
-        <input type="text" id="editTitle" placeholder="Título" style="width:100%; padding:14px; border-radius:16px; border:2px solid #ddd; margin-bottom:15px; font-size:1.1rem;">
-        <textarea id="editContent" rows="5" placeholder="Contenido..." style="width:100%; padding:14px; border-radius:16px; border:2px solid #ddd; margin-bottom:20px; resize:vertical;"></textarea>
+        <input type="text" id="editTitle" placeholder="Título" style="width:100%; padding:14px; border-radius:16px; border:2px solid #ddd; margin-bottom:15px;">
+        <textarea id="editContent" rows="5" placeholder="Contenido..." style="width:100%; padding:14px; border-radius:16px; border:2px solid #ddd; margin-bottom:20px;"></textarea>
         <div style="margin-bottom:20px;">
             <label style="font-weight:600; display:block; margin-bottom:8px;">¿Quieres cambiar la imagen/video?</label>
             <select id="editMediaType" onchange="toggleEditMediaInput()" style="padding:12px; border-radius:16px; width:100%; border:2px solid #ddd;">
@@ -518,127 +515,175 @@
                 <option value="video">Subir nuevo video</option>
             </select>
         </div>
-        <div id="editImageGroup" style="display:none;">
-            <input type="file" id="editImage" accept="image/*" style="width:100%; padding:10px; border:1px dashed #ccc; border-radius:10px;">
+        <div id="editImageGroup" style="display:none;"><input type="file" id="editImage" accept="image/*"></div>
+        <div id="editVideoGroup" style="display:none;"><input type="file" id="editVideo" accept="video/mp4,video/webm"></div>
+        <div style="display:flex; gap:12px;">
+            <button onclick="closeModal('editPostModal')" style="flex:1; padding:12px; background:#ccc; border:none; border-radius:50px;">Cancelar</button>
+            <button onclick="saveEditedPost()" style="flex:1; padding:12px; background:#1976d2; color:white; border:none; border-radius:50px;">Guardar cambios</button>
         </div>
-        <div id="editVideoGroup" style="display:none;">
-            <input type="file" id="editVideo" accept="video/mp4,video/webm" style="width:100%; padding:10px; border:1px dashed #ccc; border-radius:10px;">
-        </div>
-        <div style="display:flex; gap:12px; margin-top:30px;">
-            <button onclick="closeModal('editPostModal')" style="flex:1; padding:15px; background:#ccc; border:none; border-radius:50px; font-weight:600; cursor:pointer;">Cancelar</button>
-            <button onclick="saveEditedPost()" style="flex:1; padding:15px; background:#1976d2; color:white; border:none; border-radius:50px; font-weight:700; cursor:pointer;">Guardar cambios</button>
-        </div>
-    </div>
-</div>
-
-<div class="modal close-on-click" id="manageAccountsModal">
-    <div class="modal-content" style="padding:30px; max-width:520px;">
-        <h2 style="margin-bottom:20px; text-align:center;">👥 Cuentas guardadas</h2>
-        <div id="accountsList" style="max-height:420px; overflow-y:auto;"></div>
-        <button onclick="showAuthModal()" style="width:100%; margin-top:25px; padding:14px; background:var(--accent); color:#0b3b5f; border:none; border-radius:50px; font-weight:700; cursor:pointer;">
-            + Agregar nueva cuenta
-        </button>
-        <button onclick="closeModal('manageAccountsModal')" style="width:100%; margin-top:12px; padding:12px; background:#ccc; border:none; border-radius:50px; cursor:pointer;">Cerrar</button>
     </div>
 </div>
 
 <div class="modal close-on-click" id="importModal">
     <div class="modal-content" style="padding:30px; max-width:500px;">
         <h2 style="margin-bottom:20px;">📂 Importar datos</h2>
-        <p style="margin-bottom:20px; color:var(--text-light);">Selecciona un archivo JSON exportado anteriormente. <strong>¡Cuidado! Esto reemplazará toda la información actual.</strong></p>
-        <input type="file" id="importFile" accept=".json" style="width:100%; margin-bottom:20px;">
+        <p style="margin-bottom:20px;">Selecciona un archivo JSON exportado anteriormente. <strong>¡Cuidado! Esto reemplazará tu información.</strong></p>
+        <input type="file" id="importFile" accept=".json" style="margin-bottom:20px;">
         <div style="display:flex; gap:12px;">
-            <button onclick="closeModal('importModal')" style="flex:1; padding:12px; background:#ccc; border:none; border-radius:50px; cursor:pointer;">Cancelar</button>
-            <button onclick="confirmImport()" style="flex:1; padding:12px; background:#1976d2; color:white; border:none; border-radius:50px; cursor:pointer;">Importar</button>
+            <button onclick="closeModal('importModal')" style="flex:1; padding:12px; background:#ccc; border:none; border-radius:50px;">Cancelar</button>
+            <button onclick="confirmImport()" style="flex:1; padding:12px; background:#1976d2; color:white; border:none; border-radius:50px;">Importar</button>
         </div>
     </div>
 </div>
 
-<div class="toast" id="toast">
-    <i class="fas fa-info-circle"></i>
-    <span id="toastText"></span>
-</div>
-
+<div class="toast" id="toast"><i class="fas fa-info-circle"></i><span id="toastText"></span></div>
 <footer>
     <p>© 2026 Chismes Contigo — Comunidad en tiempo real con Firebase 🔥</p>
-    <p style="margin-top:8px; font-size:0.9rem;">Hecho con ❤️ para chismosos profesionales de internet</p>
+    <p style="margin-top:8px;">Hecho con ❤️ para chismosos profesionales de internet</p>
 </footer>
 
-<script type="module">
-    // Este script usa Firebase y Firestore. Todo el código se ejecuta después de que Firebase esté disponible.
-    // ----------------------------------------------------------------------
-    // VARIABLES GLOBALES (usaremos arrays locales para renderizado, pero la fuente real es Firebase)
-    let posts = [];          // se llenará desde Firestore
-    let globalMessages = []; // se llenará desde Firestore
+<script>
+    // ==================== FUNCIONES AUXILIARES ====================
+    function escapeHTML(str) { if (!str) return ''; return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag])); }
+    function compressImage(file, callback) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 800;
+                let width = img.width, height = img.height;
+                if (width > MAX_WIDTH) { height = Math.round((height * MAX_WIDTH) / width); width = MAX_WIDTH; }
+                canvas.width = width; canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                callback(canvas.toDataURL('image/jpeg', 0.7));
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // ==================== VARIABLES GLOBALES ====================
+    let posts = [];
+    let globalMessages = [];
     let currentCategory = "all";
     let sortMode = "new";
     let visiblePosts = 9;
-    let currentUser = null;      // objeto con uid, displayName, avatar
+    let currentUser = null;
     let currentPostId = null;
-    let likedPosts = [];          // lista de ids de posts que el usuario actual ha likeado (para control UI)
-    let savedAccounts = [];       // ya no se usa, pero lo mantenemos por compatibilidad
+    let likedPosts = [];
+    let editingPostId = null;
 
-    // Referencias a Firestore
     const postsCol = collection(db, "posts");
     const messagesCol = collection(db, "globalMessages");
     const usersCol = collection(db, "users");
 
-    // Función para obtener el usuario actual desde Firebase Auth (anónimo)
-    async function initAuth() {
-        return new Promise((resolve) => {
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    // Usuario anónimo autenticado
-                    const userDocRef = doc(usersCol, user.uid);
-                    const userDoc = await getDoc(userDocRef);
-                    if (!userDoc.exists()) {
-                        // Crear perfil por defecto
-                        const defaultAvatar = `https://i.pravatar.cc/128?img=${Math.floor(Math.random()*70)}`;
-                        await setDoc(userDocRef, {
-                            username: "Anónimo_" + user.uid.slice(0,6),
-                            avatar: defaultAvatar,
-                            createdAt: serverTimestamp()
-                        });
-                    }
-                    const userData = (await getDoc(userDocRef)).data();
-                    currentUser = {
-                        uid: user.uid,
-                        username: userData.username,
-                        avatar: userData.avatar
-                    };
-                    // Cargar los likes que el usuario ya ha dado
-                    const likesDocRef = doc(db, "userLikes", user.uid);
-                    const likesSnap = await getDoc(likesDocRef);
-                    if (likesSnap.exists()) {
-                        likedPosts = likesSnap.data().posts || [];
-                    } else {
-                        likedPosts = [];
-                    }
-                    resolve();
-                } else {
-                    // No autenticado -> iniciar sesión anónima
-                    signInAnonymously(auth).catch(e => console.error("Error auth:", e));
-                    // esperamos a que se resuelva (la próxima llamada)
-                    // pero dejamos un listener que resolverá luego
-                    onAuthStateChanged(auth, async (u) => {
-                        if (u) {
-                            await initAuth();
-                            resolve();
-                        }
-                    });
-                }
-            });
-        });
+    // ==================== AUTENTICACIÓN ====================
+    function showAuthModal() { document.getElementById("authModal").style.display = "flex"; switchAuthTab(0); }
+    function switchAuthTab(tab) {
+        document.getElementById("loginForm").style.display = tab === 0 ? "block" : "none";
+        document.getElementById("registerForm").style.display = tab === 1 ? "block" : "none";
+        document.querySelectorAll(".auth-tab").forEach((t, i) => t.classList.toggle("active", i === tab));
     }
 
-    // Escuchar cambios en posts en tiempo real
+    async function login() {
+        const email = document.getElementById("loginEmail").value.trim();
+        const password = document.getElementById("loginPassword").value;
+        try {
+            const cred = await signInWithEmailAndPassword(auth, email, password);
+            showToast("Inicio de sesión exitoso", "success");
+            closeModal("authModal");
+        } catch(e) { alert("Error: " + e.message); }
+    }
+
+    async function register() {
+        const username = escapeHTML(document.getElementById("regUsername").value.trim());
+        const email = document.getElementById("regEmail").value.trim();
+        const password = document.getElementById("regPassword").value;
+        if (!username || username.length < 3) return alert("Nombre muy corto");
+        try {
+            const cred = await createUserWithEmailAndPassword(auth, email, password);
+            // Guardar perfil en Firestore
+            await setDoc(doc(usersCol, cred.user.uid), {
+                username: username,
+                avatar: `https://i.pravatar.cc/128?img=${Math.floor(Math.random()*70)}`,
+                email: email,
+                createdAt: serverTimestamp()
+            });
+            await updateProfile(cred.user, { displayName: username });
+            showToast("Cuenta creada exitosamente", "success");
+            closeModal("authModal");
+        } catch(e) { alert("Error: " + e.message); }
+    }
+
+    async function logout() {
+        await signOut(auth);
+        showToast("Sesión cerrada", "info");
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            const userDoc = await getDoc(doc(usersCol, user.uid));
+            if (userDoc.exists()) {
+                currentUser = { uid: user.uid, ...userDoc.data() };
+            } else {
+                currentUser = { uid: user.uid, username: user.displayName || "Usuario", avatar: "https://i.pravatar.cc/128" };
+            }
+            // Cargar likes del usuario
+            const likesDoc = await getDoc(doc(db, "userLikes", user.uid));
+            likedPosts = likesDoc.exists() ? likesDoc.data().posts : [];
+        } else {
+            currentUser = null;
+            likedPosts = [];
+        }
+        renderUserArea();
+        renderPosts(); // refresca botones de like
+    });
+
+    function renderUserArea() {
+        const container = document.getElementById("userArea");
+        if (currentUser) {
+            container.innerHTML = `
+                <div style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="toggleDropdown(event)">
+                    <img src="${escapeHTML(currentUser.avatar)}" class="avatar">
+                    <span style="font-weight:600;">@${escapeHTML(currentUser.username)}</span>
+                    <i class="fas fa-chevron-down" style="font-size:0.8rem;"></i>
+                </div>`;
+        } else {
+            container.innerHTML = `<button onclick="showAuthModal()" style="background:var(--accent); color:#0b3b5f; border:none; padding:10px 24px; border-radius:50px; font-weight:700; cursor:pointer;">Entrar</button>`;
+        }
+    }
+
+    function toggleDropdown(e) { e.stopPropagation(); document.getElementById("userDropdown").classList.toggle("show"); }
+    document.addEventListener('click', () => document.getElementById("userDropdown").classList.remove("show"));
+
+    // ==================== PERFIL ====================
+    function showEditProfileModal() {
+        document.getElementById("editProfileAvatarPreview").src = currentUser.avatar;
+        document.getElementById("editUsername").value = currentUser.username;
+        document.getElementById("newAvatarUrl").value = currentUser.avatar;
+        document.getElementById("editProfileModal").style.display = "flex";
+    }
+
+    async function saveProfile() {
+        const newUsername = escapeHTML(document.getElementById("editUsername").value.trim());
+        const newAvatar = document.getElementById("newAvatarUrl").value.trim();
+        if (!newUsername) return alert("El nombre no puede estar vacío");
+        if (newAvatar) currentUser.avatar = newAvatar;
+        currentUser.username = newUsername;
+        await setDoc(doc(usersCol, currentUser.uid), { username: newUsername, avatar: currentUser.avatar }, { merge: true });
+        await updateProfile(auth.currentUser, { displayName: newUsername });
+        renderUserArea();
+        closeModal("editProfileModal");
+        showToast("Perfil actualizado", "success");
+    }
+
+    // ==================== POSTS EN TIEMPO REAL ====================
     function listenPosts() {
         const q = query(postsCol, orderBy("timestamp", "desc"));
         onSnapshot(q, (snapshot) => {
-            posts = [];
-            snapshot.forEach(docSnap => {
-                posts.push({ id: docSnap.id, ...docSnap.data() });
-            });
+            posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderPosts();
             renderTrending();
             updateLiveStats();
@@ -648,31 +693,25 @@
     function listenMessages() {
         const q = query(messagesCol, orderBy("timestamp", "desc"));
         onSnapshot(q, (snapshot) => {
-            globalMessages = [];
-            snapshot.forEach(docSnap => {
-                globalMessages.unshift({ id: docSnap.id, ...docSnap.data() });
-            });
+            globalMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).reverse();
             if (globalMessages.length > 30) globalMessages = globalMessages.slice(-30);
             renderGlobalChat();
         });
     }
 
-    // Funciones de UI (muchas ya existentes, solo reemplazar las operaciones de datos)
-    window.renderPosts = function() {
+    function renderPosts() {
         const container = document.getElementById("postsContainer");
         let search = document.getElementById("searchInput")?.value.toLowerCase() || "";
         let filtered = (currentCategory === "all" ? [...posts] : posts.filter(p => p.category === currentCategory))
             .filter(p => p.title.toLowerCase().includes(search) || p.content.toLowerCase().includes(search));
-
         if (sortMode === "hot") filtered.sort((a,b) => b.likes - a.likes);
         else if (sortMode === "comments") filtered.sort((a,b) => b.comments.length - a.comments.length);
-        else filtered.sort((a,b) => b.timestamp?.seconds - a.timestamp?.seconds);
-
+        else filtered.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
         const toShow = filtered.slice(0, visiblePosts);
         container.innerHTML = toShow.map(post => {
             const mediaHTML = post.mediaType === "video" 
                 ? `<video class="card-video" src="${post.mediaUrl}" muted loop onmouseover="this.play()" onmouseout="this.pause()" loading="lazy"></video>`
-                : `<img class="card-media" src="${post.mediaUrl}" alt="${post.title}" loading="lazy">`;
+                : `<img class="card-media" src="${post.mediaUrl}" loading="lazy">`;
             return `
                 <div class="card" onclick="openPostDetail('${post.id}')">
                     ${mediaHTML}
@@ -683,43 +722,39 @@
                             ${currentCategory === 'all' ? `<span style="margin-left:auto; font-size:0.7rem; background:var(--bg); padding:2px 8px; border-radius:10px;">${post.category}</span>` : ''}
                         </div>
                         <h3>${post.title}</h3>
-                        <p style="color:var(--text-light); margin:8px 0;">${post.content.substring(0,95)}...</p>
+                        <p>${post.content.substring(0,95)}...</p>
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px;">
                             <button class="like-btn-card" onclick="likePost(event, '${post.id}')">❤️ ${post.likes || 0}</button>
-                            <span style="font-size:0.95rem; color:var(--text-light);"><i class="fas fa-comment"></i> ${post.comments?.length || 0}</span>
+                            <span><i class="fas fa-comment"></i> ${post.comments?.length || 0}</span>
                         </div>
                     </div>
                 </div>`;
-        }).join('') || `<div style="grid-column:1/-1; text-align:center; padding:80px; background:var(--card); border-radius:30px; color:#777;">No hay chismes aún... ¡Sé el primero en publicar! 🔥</div>`;
+        }).join('') || `<div style="grid-column:1/-1; text-align:center; padding:80px; background:var(--card); border-radius:30px;">No hay chismes aún... ¡Sé el primero en publicar! 🔥</div>`;
     }
 
-    window.likePost = async function(e, id) {
+    async function likePost(e, id) {
         e.stopPropagation();
-        if (!currentUser) return showToast("Inicia sesión primero", "error");
+        if (!currentUser) return showToast("Inicia sesión", "error");
         if (likedPosts.includes(id)) return showToast("Ya diste like", "error");
         const postRef = doc(postsCol, id);
         await updateDoc(postRef, { likes: increment(1) });
-        // Guardar en userLikes
-        const likesRef = doc(db, "userLikes", currentUser.uid);
-        await setDoc(likesRef, { posts: [...likedPosts, id] }, { merge: true });
+        await setDoc(doc(db, "userLikes", currentUser.uid), { posts: [...likedPosts, id] }, { merge: true });
         likedPosts.push(id);
         showToast("❤️ Like guardado", "success");
     }
 
-    window.publishPost = async function() {
-        if (!currentUser) return showToast("Debes iniciar sesión", "error");
+    async function publishPost() {
+        if (!currentUser) return showToast("Inicia sesión", "error");
         const title = escapeHTML(document.getElementById("modalTitle").value.trim());
         const content = escapeHTML(document.getElementById("modalContent").value.trim());
         const category = document.getElementById("modalCategory").value;
         const mediaType = document.getElementById("mediaType").value;
         if (!title || !content) return alert("Faltan título o contenido");
-
         const btn = document.getElementById("btnPublish");
         btn.innerHTML = "Procesando..."; btn.disabled = true;
-
-        let mediaUrl = "";
         const fileInput = mediaType === "image" ? document.getElementById("modalImage") : document.getElementById("modalVideo");
         const file = fileInput.files[0];
+        let mediaUrl = "";
         if (file) {
             if (mediaType === "image") {
                 compressImage(file, async (compressed) => {
@@ -729,10 +764,7 @@
                 });
                 return;
             } else {
-                if(file.size > 5*1024*1024) {
-                    btn.innerHTML = "Publicar ✨"; btn.disabled = false;
-                    return alert("Video > 5MB");
-                }
+                if (file.size > 5*1024*1024) { btn.innerHTML = "Publicar ✨"; btn.disabled = false; return alert("Video > 5MB"); }
                 const reader = new FileReader();
                 reader.onload = async (e) => {
                     mediaUrl = e.target.result;
@@ -752,26 +784,55 @@
     }
 
     async function addPostToFirestore(title, content, category, mediaType, mediaUrl) {
-        const newPost = {
+        await addDoc(postsCol, {
             title, content, category, mediaType, mediaUrl,
-            author: { username: currentUser.username, avatar: currentUser.avatar, uid: currentUser.uid },
-            likes: 0,
-            comments: [],
-            timestamp: serverTimestamp()
-        };
-        await addDoc(postsCol, newPost);
-        closeModal('newPostModal');
-        showToast("✅ ¡Chisme publicado!", "success");
+            author: { uid: currentUser.uid, username: currentUser.username, avatar: currentUser.avatar },
+            likes: 0, comments: [], timestamp: serverTimestamp()
+        });
+        closeModal("newPostModal");
+        showToast("✅ Chisme publicado", "success");
         document.getElementById("modalTitle").value = "";
         document.getElementById("modalContent").value = "";
         document.getElementById("modalImage").value = "";
         document.getElementById("modalVideo").value = "";
     }
 
-    window.addCommentToPost = async function() {
+    // ==================== DETALLE DE POST ====================
+    async function openPostDetail(id) {
+        currentPostId = id;
+        const post = posts.find(p => p.id === id);
+        if (!post) return;
+        const isAuthor = currentUser && post.author.uid === currentUser.uid;
+        document.getElementById("postDetailHeader").innerHTML = `
+            <div style="display:flex; align-items:center; gap:12px;">
+                <img src="${post.author.avatar}" class="avatar">
+                <div><strong>@${post.author.username}</strong><small>hace ${Math.floor((Date.now()-(post.timestamp?.seconds*1000||Date.now()))/60000)} min</small></div>
+            </div>
+            <h2>${post.title}</h2>
+            <p>${post.content}</p>
+            <div>${post.mediaType === "video" ? `<video controls src="${post.mediaUrl}" style="width:100%; border-radius:16px;"></video>` : `<img src="${post.mediaUrl}" style="width:100%; border-radius:16px;">`}</div>
+            <div style="display:flex; gap:15px; margin-top:15px;">
+                <button onclick="likePostInDetail()" id="modalLikeBtn">❤️ ${post.likes} likes</button>
+                <span>💬 ${post.comments?.length || 0} comentarios</span>
+                ${isAuthor ? `<button onclick="showEditPostModal()">✏️ Editar</button><button onclick="deletePost()" style="background:#d32f2f;">🗑️ Eliminar</button>` : ''}
+            </div>`;
+        renderComments(post);
+        document.getElementById("postDetailModal").style.display = "flex";
+    }
+
+    function renderComments(post) {
+        const container = document.getElementById("commentsContainer");
+        container.innerHTML = (post.comments || []).map(c => `
+            <div class="chat-bubble ${currentUser && c.username === currentUser.username ? 'me' : 'other'}">
+                <strong>@${c.username}</strong><br>${c.text}
+                <small>${new Date(c.time).toLocaleTimeString()}</small>
+            </div>
+        `).join('') || `<p style="text-align:center; color:#888;">Sin comentarios</p>`;
+    }
+
+    async function addCommentToPost() {
         if (!currentUser) return showToast("Inicia sesión", "error");
-        const input = document.getElementById("newCommentInput");
-        const text = escapeHTML(input.value.trim());
+        const text = escapeHTML(document.getElementById("newCommentInput").value.trim());
         if (!text) return;
         const postRef = doc(postsCol, currentPostId);
         const postSnap = await getDoc(postRef);
@@ -779,107 +840,197 @@
             const comments = postSnap.data().comments || [];
             comments.push({ username: currentUser.username, text, time: Date.now() });
             await updateDoc(postRef, { comments });
-            input.value = "";
-            renderComments(await getDoc(postRef).then(d => d.data()));
+            document.getElementById("newCommentInput").value = "";
+            renderComments(await (await getDoc(postRef)).data());
         }
     }
 
-    window.openPostDetail = async function(id) {
-        currentPostId = id;
-        const postSnap = await getDoc(doc(postsCol, id));
-        if (!postSnap.exists()) return;
-        const post = postSnap.data();
-        const isAuthor = currentUser && post.author.uid === currentUser.uid;
-        let headerHTML = `
-            <div style="display:flex; align-items:center; gap:12px;">
-                <img src="${post.author.avatar}" class="avatar">
-                <div><strong>@${post.author.username}</strong><small style="display:block; color:#888;">hace ${Math.floor((Date.now()-(post.timestamp?.seconds*1000||Date.now()))/60000)} min</small></div>
-            </div>
-            <h2 style="margin:15px 0 8px;">${post.title}</h2>
-            <p style="color:var(--text-light);">${post.content}</p>
-            <div style="margin:20px 0;">
-                ${post.mediaType === "video" ? `<video controls style="width:100%; border-radius:16px;" src="${post.mediaUrl}"></video>` : `<img src="${post.mediaUrl}" style="width:100%; border-radius:16px;">`}
-            </div>
-            <div style="display:flex; align-items:center; gap:15px;">
-                <button onclick="likePostInDetail()" style="background:#fff0e6; color:#f57c00; border:none; padding:10px 20px; border-radius:50px; font-weight:700; cursor:pointer;" id="modalLikeBtn">❤️ ${post.likes} likes</button>
-                <span style="font-size:1.1rem; color:var(--text);">💬 ${post.comments?.length || 0} comentarios</span>
-                ${isAuthor ? `
-                    <button onclick="showEditPostModal()" style="margin-left:auto; background:#1976d2; color:white; border:none; padding:8px 20px; border-radius:50px; font-weight:700; cursor:pointer;">✏️ Editar</button>
-                    <button onclick="deletePost()" style="background:#d32f2f; color:white; border:none; padding:8px 20px; border-radius:50px; font-weight:700; cursor:pointer;">🗑️ Eliminar</button>
-                ` : ''}
-            </div>`;
-        document.getElementById("postDetailHeader").innerHTML = headerHTML;
-        renderComments(post);
-        document.getElementById("postDetailModal").style.display = "flex";
-    }
-
-    function renderComments(post) {
-        const container = document.getElementById("commentsContainer");
-        container.innerHTML = (post.comments || []).map(c => {
-            const isMe = currentUser && c.username === currentUser.username;
-            return `<div class="chat-bubble ${isMe ? 'me' : 'other'}">
-                        <strong>@${c.username}</strong><br>${c.text}
-                        <small>${new Date(c.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</small>
-                    </div>`;
-        }).join('') || `<p style="text-align:center; color:#888; padding:40px;">Todavía no hay comentarios...</p>`;
-        container.scrollTop = container.scrollHeight;
-    }
-
-    window.likePostInDetail = async function() {
+    async function likePostInDetail() {
+        if (!currentUser) return showToast("Inicia sesión", "error");
+        if (likedPosts.includes(currentPostId)) return showToast("Ya diste like", "error");
         const postRef = doc(postsCol, currentPostId);
-        const postSnap = await getDoc(postRef);
-        if (!postSnap.exists()) return;
-        if (!likedPosts.includes(currentPostId)) {
-            await updateDoc(postRef, { likes: increment(1) });
-            const likesRef = doc(db, "userLikes", currentUser.uid);
-            await setDoc(likesRef, { posts: [...likedPosts, currentPostId] }, { merge: true });
-            likedPosts.push(currentPostId);
-            const updated = (await getDoc(postRef)).data();
-            document.getElementById("modalLikeBtn").innerHTML = `❤️ ${updated.likes} likes`;
-            showToast("❤️ Like agregado", "success");
-        } else {
-            showToast("Ya diste like", "error");
-        }
+        await updateDoc(postRef, { likes: increment(1) });
+        await setDoc(doc(db, "userLikes", currentUser.uid), { posts: [...likedPosts, currentPostId] }, { merge: true });
+        likedPosts.push(currentPostId);
+        const updated = await getDoc(postRef);
+        document.getElementById("modalLikeBtn").innerHTML = `❤️ ${updated.data().likes} likes`;
+        showToast("❤️ Like agregado", "success");
     }
 
-    window.deletePost = async function() {
+    async function deletePost() {
         if (!currentUser) return;
         const postRef = doc(postsCol, currentPostId);
-        const postSnap = await getDoc(postRef);
-        if (postSnap.exists() && postSnap.data().author.uid === currentUser.uid) {
-            if (confirm("¿Eliminar este chisme?")) {
-                await deleteDoc(postRef);
-                closeModal("postDetailModal");
-                showToast("Chisme eliminado", "success");
-            }
+        const post = (await getDoc(postRef)).data();
+        if (post.author.uid !== currentUser.uid) return showToast("No autorizado", "error");
+        if (confirm("¿Eliminar este chisme?")) {
+            await deleteDoc(postRef);
+            closeModal("postDetailModal");
+            showToast("Chisme eliminado", "success");
         }
     }
 
-    // Funciones auxiliares (export/import, etc.) se mantienen igual pero con Firebase se vuelven menos necesarias
-    window.exportData = function() { /* igual que antes pero exportar desde Firestore sería más complejo, lo dejamos opcional */ }
-    window.importData = function() { /* similar */ }
+    function showEditPostModal() {
+        const post = posts.find(p => p.id === currentPostId);
+        if (!post || post.author.uid !== currentUser.uid) return;
+        editingPostId = currentPostId;
+        document.getElementById("editTitle").value = post.title;
+        document.getElementById("editContent").value = post.content;
+        document.getElementById("editMediaType").value = "keep";
+        toggleEditMediaInput();
+        closeModal("postDetailModal");
+        document.getElementById("editPostModal").style.display = "flex";
+    }
 
-    // Inicialización
-    (async function() {
-        await initAuth();
-        listenPosts();
-        listenMessages();
-        renderUserArea();
-        renderCategories();
-        renderTrending();
-        updateLiveStats();
-        // ... resto de event listeners y tema
-        window.showToast = function(text, type="info") {
-            const toast = document.getElementById("toast");
-            const colors = { info: "#1976d2", error: "#d32f2f", success: "#2e7d32" };
-            toast.style.background = colors[type] || "#1976d2";
-            document.getElementById("toastText").innerHTML = text;
-            toast.style.display = "flex";
-            setTimeout(() => toast.style.display = "none", 3000);
+    function toggleEditMediaInput() {
+        const type = document.getElementById("editMediaType").value;
+        document.getElementById("editImageGroup").style.display = type === "image" ? "block" : "none";
+        document.getElementById("editVideoGroup").style.display = type === "video" ? "block" : "none";
+    }
+
+    async function saveEditedPost() {
+        const post = posts.find(p => p.id === editingPostId);
+        if (!post || post.author.uid !== currentUser.uid) return showToast("No autorizado", "error");
+        const newTitle = escapeHTML(document.getElementById("editTitle").value.trim());
+        const newContent = escapeHTML(document.getElementById("editContent").value.trim());
+        const mediaType = document.getElementById("editMediaType").value;
+        const fileInput = mediaType === "image" ? document.getElementById("editImage") : document.getElementById("editVideo");
+        const file = fileInput.files[0];
+        const updates = { title: newTitle, content: newContent };
+        if (file && mediaType !== "keep") {
+            if (mediaType === "image") {
+                compressImage(file, async (compressed) => {
+                    updates.mediaType = "image";
+                    updates.mediaUrl = compressed;
+                    await updateDoc(doc(postsCol, editingPostId), updates);
+                    finishEdit();
+                });
+                return;
+            } else {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    updates.mediaType = "video";
+                    updates.mediaUrl = e.target.result;
+                    await updateDoc(doc(postsCol, editingPostId), updates);
+                    finishEdit();
+                };
+                reader.readAsDataURL(file);
+                return;
+            }
         }
-        window.closeModal = (id) => document.getElementById(id).style.display = "none";
-        // ... resto de funciones que ya están definidas
-    })();
+        await updateDoc(doc(postsCol, editingPostId), updates);
+        finishEdit();
+    }
+
+    function finishEdit() {
+        closeModal("editPostModal");
+        showToast("Chisme editado", "success");
+        renderPosts();
+        editingPostId = null;
+    }
+
+    // ==================== CHAT GLOBAL ====================
+    function openGlobalChat() { document.getElementById("globalChatModal").style.display = "flex"; renderGlobalChat(); }
+    function renderGlobalChat() {
+        const container = document.getElementById("globalChatWindow");
+        container.innerHTML = globalMessages.map(msg => `
+            <div><strong>@${msg.username}</strong><br>${msg.text}<small>${new Date(msg.time).toLocaleTimeString()}</small></div>
+        `).join('') || `<p style="text-align:center;">Sin mensajes aún</p>`;
+    }
+    async function sendGlobalMessage() {
+        if (!currentUser) return showToast("Inicia sesión", "error");
+        const text = escapeHTML(document.getElementById("globalChatInput").value.trim());
+        if (!text) return;
+        await addDoc(messagesCol, { username: currentUser.username, text, time: Date.now(), timestamp: serverTimestamp() });
+        document.getElementById("globalChatInput").value = "";
+    }
+
+    // ==================== UTILIDADES ====================
+    function updateLiveStats() {
+        document.getElementById("liveStats").innerHTML = `
+            <div><strong>${posts.length}</strong> chismes</div>
+            <div><strong>${posts.reduce((s,p) => s + (p.likes||0), 0)}</strong> likes</div>
+            <div><strong>${posts.reduce((s,p) => s + (p.comments?.length||0), 0)}</strong> comentarios</div>
+            <div><strong>${globalMessages.length}</strong> mensajes</div>`;
+    }
+    function renderTrending() {
+        const trending = [...posts].sort((a,b) => (b.likes||0) - (a.likes||0)).slice(0,5);
+        document.getElementById("trendingSidebar").innerHTML = trending.map(p => `<div style="margin:8px 0;">🔥 ${p.title.substring(0,40)}</div>`).join('') || "<div>Ningún chisme aún</div>";
+    }
+    function renderCategories() {
+        const cats = [
+            { key: "all", emoji: "🌎", name: "Todo" },
+            { key: "famosos", emoji: "🌟", name: "Famosos" },
+            { key: "chismes", emoji: "🤫", name: "Tech & Vida" },
+            { key: "polemicas", emoji: "🔥", name: "Polémicas" }
+        ];
+        document.getElementById("categoryList").innerHTML = cats.map(cat => `
+            <button onclick="changeCategory('${cat.key}')" style="width:100%; text-align:left; padding:12px; margin:5px 0; border:none; background:${cat.key === currentCategory ? 'var(--primary)' : 'var(--bg)'}; color:${cat.key === currentCategory ? 'white' : 'var(--text)'}; border-radius:16px; cursor:pointer;">${cat.emoji} ${cat.name}</button>
+        `).join('');
+    }
+    function changeCategory(cat) { currentCategory = cat; visiblePosts = 9; document.getElementById("currentCategoryTitle").innerHTML = cat === "all" ? "🌎 Feed Global" : cat === "famosos" ? "🌟 Famosos" : cat === "chismes" ? "🤫 Tech & Vida" : "🔥 Polémicas"; renderCategories(); renderPosts(); }
+    function loadMorePosts() { visiblePosts += 6; renderPosts(); }
+    function toggleMediaInput() { document.getElementById("imageInputGroup").style.display = document.getElementById("mediaType").value === "image" ? "block" : "none"; document.getElementById("videoInputGroup").style.display = document.getElementById("mediaType").value === "video" ? "block" : "none"; }
+    function showToast(text, type="info") { const toast = document.getElementById("toast"); const colors = { info: "#1976d2", error: "#d32f2f", success: "#2e7d32" }; toast.style.background = colors[type]; document.getElementById("toastText").innerHTML = text; toast.style.display = "flex"; setTimeout(() => toast.style.display = "none", 3000); }
+    function closeModal(id) { document.getElementById(id).style.display = "none"; }
+
+    // ==================== EXPORT / IMPORT ====================
+    function exportData() {
+        const data = { posts: [], globalMessages: [] }; // No exportamos todo porque Firebase ya es central, pero se puede mantener por compatibilidad
+        const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "chismes_backup.json";
+        a.click();
+        showToast("Backup generado", "success");
+    }
+    function importData() { document.getElementById("importModal").style.display = "flex"; }
+    function confirmImport() { closeModal("importModal"); showToast("Importación no disponible en modo nube", "info"); }
+
+    // ==================== TEMA OSCURO ====================
+    const toggleTheme = document.getElementById("themeToggle");
+    document.body.dataset.theme = localStorage.getItem("theme") || "light";
+    toggleTheme.textContent = document.body.dataset.theme === "dark" ? "☀️" : "🌙";
+    toggleTheme.addEventListener("click", () => {
+        const newTheme = document.body.dataset.theme === "dark" ? "light" : "dark";
+        document.body.dataset.theme = newTheme;
+        localStorage.setItem("theme", newTheme);
+        toggleTheme.textContent = newTheme === "dark" ? "☀️" : "🌙";
+    });
+
+    // ==================== INICIALIZACIÓN ====================
+    listenPosts();
+    listenMessages();
+    renderCategories();
+    updateLiveStats();
+
+    // Eventos globales
+    document.getElementById("newCommentInput").addEventListener("keypress", e => { if (e.key === "Enter") addCommentToPost(); });
+    document.getElementById("globalChatInput").addEventListener("keypress", e => { if (e.key === "Enter") sendGlobalMessage(); });
+    document.querySelectorAll('.close-on-click').forEach(modal => modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; }));
+    window.openGlobalChat = openGlobalChat;
+    window.showNewPostModal = () => { if (!currentUser) showToast("Inicia sesión", "error"); else document.getElementById("newPostModal").style.display = "flex"; toggleMediaInput(); };
+    window.loadMorePosts = loadMorePosts;
+    window.changeCategory = changeCategory;
+    window.renderPosts = renderPosts;
+    window.exportData = exportData;
+    window.importData = importData;
+    window.confirmImport = confirmImport;
+    window.showEditProfileModal = showEditProfileModal;
+    window.saveProfile = saveProfile;
+    window.logout = logout;
+    window.likePost = likePost;
+    window.publishPost = publishPost;
+    window.openPostDetail = openPostDetail;
+    window.addCommentToPost = addCommentToPost;
+    window.likePostInDetail = likePostInDetail;
+    window.deletePost = deletePost;
+    window.showEditPostModal = showEditPostModal;
+    window.saveEditedPost = saveEditedPost;
+    window.toggleMediaInput = toggleMediaInput;
+    window.toggleEditMediaInput = toggleEditMediaInput;
+    window.sendGlobalMessage = sendGlobalMessage;
+    window.closeModal = closeModal;
+    window.showToast = showToast;
 </script>
 </body>
 </html>
